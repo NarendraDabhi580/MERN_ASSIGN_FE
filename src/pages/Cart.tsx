@@ -12,7 +12,7 @@ interface CartItem {
     price: number;
     imageUrl: string;
     category: string;
-  };
+  } | null;
   quantity: number;
 }
 
@@ -28,7 +28,11 @@ export default function Cart() {
       .get("/cart")
       .then((res) => {
         if (active) {
-          setItems(res.data.items ?? []);
+          // Filter out any items whose product was deleted (product === null)
+          const validItems = (res.data.items ?? []).filter(
+            (item: CartItem) => item.product !== null,
+          );
+          setItems(validItems);
           setLoading(false);
         }
       })
@@ -48,7 +52,9 @@ export default function Cart() {
     try {
       await api.put(`/cart/update/${id}`, { quantity: qty });
       setItems((prev) =>
-        prev.map((i) => (i.product._id === id ? { ...i, quantity: qty } : i)),
+        prev.map((i: any) =>
+          i.product._id === id ? { ...i, quantity: qty } : i,
+        ),
       );
     } catch {
       showToast("Failed to update quantity", "error");
@@ -58,14 +64,17 @@ export default function Cart() {
   const remove = async (id: string) => {
     try {
       await api.delete(`/cart/remove/${id}`);
-      setItems((prev) => prev.filter((i) => i.product._id !== id));
+      setItems((prev) => prev.filter((i: any) => i.product._id !== id));
       showToast("Item removed from cart", "info");
     } catch {
       showToast("Failed to remove item", "error");
     }
   };
 
-  const subtotal = items.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const subtotal = items.reduce(
+    (s, i) => s + (i.product ? i.product.price * i.quantity : 0),
+    0,
+  );
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
   return (
@@ -106,7 +115,7 @@ export default function Cart() {
             <div className="cart-layout">
               {/* Items */}
               <div className="cart-items">
-                {items.map((item) => (
+                {items.map((item: any) => (
                   <div className="cart-item card" key={item.product._id}>
                     <img
                       className="cart-item-img"
